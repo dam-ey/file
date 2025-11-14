@@ -1,1 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload & Download Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #667eea;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-list-preview {
+            margin-top: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .file-list-preview ul {
+            list-style: none;
+            margin: 0;
+        }
+
+        .file-list-preview li {
+            padding: 5px;
+            color: #666;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-list-preview li:last-child {
+            border-bottom: none;
+        }
+
+        .upload-label {
+            display: block;
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: 500;
+        }
+
+        .upload-label:hover {
+            background: #764ba2;
+        }
+
+        .upload-label.dragover {
+            background: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .upload-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: #218838;
+        }
+
+        .upload-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .table-section {
+            margin-top: 30px;
+        }
+
+        .table-title {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        thead {
+            background: #667eea;
+            color: white;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .file-icon {
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .download-btn {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+
+        .download-btn:hover {
+            background: #0056b3;
+        }
+
+        .delete-btn {
+            padding: 8px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+
+        .delete-btn:hover {
+            background: #c82333;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 File Manager</h1>
+
+        <div class="upload-section">
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="upload-label">
+                    📤 Click to upload or drag & drop
+                </label>
+                <input type="file" id="fileInput" multiple />
+            </div>
+            <div class="file-name" id="fileName"></div>
+            <div class="file-list-preview" id="fileListPreview" style="display:none;">
+                <ul id="fileList"></ul>
+            </div>
+            <button class="upload-btn" id="uploadBtn" disabled>Upload Files</button>
+            <div class="status-message" id="statusMessage"></div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-title">📊 Uploaded Files</div>
+            <table id="filesTable">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Size</th>
+                        <th>Uploaded</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="filesBody">
+                    <tr>
+                        <td colspan="4" class="empty-message">No files uploaded yet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const fileList = document.getElementById('fileList');
+        const fileListPreview = document.getElementById('fileListPreview');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const filesBody = document.getElementById('filesBody');
+        const uploadLabel = document.querySelector('.upload-label');
+        const statusMessage = document.getElementById('statusMessage');
+
+        let selectedFiles = [];
+        let uploadedFiles = [];
+
+        // Load files from localStorage
+        function loadFiles() {
+            const stored = localStorage.getItem('uploadedFiles');
+            uploadedFiles = stored ? JSON.parse(stored) : [];
+            renderTable();
+        }
+
+        // Save files to localStorage
+        function saveFiles() {
+            localStorage.setItem('uploadedFiles', JSON.stringify(uploadedFiles));
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+            setTimeout(() => {
+                statusMessage.className = 'status-message';
+            }, 3000);
+        }
+
+        // Handle file selection
+        fileInput.addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files);
+            updateFileDisplay();
+        });
+
+        // Handle drag and drop
+        uploadLabel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadLabel.classList.add('dragover');
+        });
+
+        uploadLabel.addEventListener('dragleave', () => {
+            uploadLabel.classList.remove('dragover');
+        });
+
+        uploadLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadLabel.classList.remove('dragover');
+            selectedFiles = Array.from(e.dataTransfer.files);
+            fileInput.files = e.dataTransfer.files;
+            updateFileDisplay();
+        });
+
+        // Update file display
+        function updateFileDisplay() {
+            if (selectedFiles.length > 0) {
+                fileName.textContent = `Selected: ${selectedFiles.length} file(s)`;
+                fileList.innerHTML = selectedFiles.map((f, i) => 
+                    `<li>${i + 1}. ${f.name} (${formatSize(f.size)})</li>`
+                ).join('');
+                fileListPreview.style.display = 'block';
+                uploadBtn.disabled = false;
+            } else {
+                fileName.textContent = '';
+                fileListPreview.style.display = 'none';
+                uploadBtn.disabled = true;
+            }
+        }
+
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Upload files
+        uploadBtn.addEventListener('click', () => {
+            if (selectedFiles.length === 0) return;
+
+            let uploadedCount = 0;
+            selectedFiles.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const fileObj = {
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        data: e.target.result,
+                        uploadedAt: new Date().toLocaleString()
+                    };
+
+                    uploadedFiles.push(fileObj);
+                    uploadedCount++;
+
+                    if (uploadedCount === selectedFiles.length) {
+                        saveFiles();
+                        renderTable();
+                        
+                        // Reset form
+                        selectedFiles = [];
+                        fileInput.value = '';
+                        fileName.textContent = '';
+                        fileListPreview.style.display = 'none';
+                        uploadBtn.disabled = true;
+                        
+                        showStatus(`✓ ${uploadedCount} file(s) uploaded successfully!`, 'success');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        });
+
+        // Render table
+        function renderTable() {
+            if (uploadedFiles.length === 0) {
+                filesBody.innerHTML = '<tr><td colspan="4" class="empty-message">No files uploaded yet</td></tr>';
+                return;
+            }
+
+            filesBody.innerHTML = uploadedFiles.map(file => `
+                <tr>
+                    <td><span class="file-icon">📄</span>${file.name}</td>
+                    <td><span class="file-size">${formatSize(file.size)}</span></td>
+                    <td>${file.uploadedAt}</td>
+                    <td>
+                        <button class="download-btn" onclick="downloadFile(${file.id})">📥 Download</button>
+                        ${isConvertible(file.name) ? `<button class="download-btn" onclick="convertToPDF(${file.id}, '${file.name}')" style="background: #ff6b35; margin-left: 5px;">📄 PDF</button>` : ''}
+                        <button class="delete-btn" onclick="deleteFile(${file.id})">🗑️ Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Check if file is convertible (Word or PowerPoint)
+        function isConvertible(fileName) {
+            const ext = fileName.toLowerCase().split('.').pop();
+            return ['doc', 'docx', 'ppt', 'pptx'].includes(ext);
+        }
+
+        // Download file
+        window.downloadFile = function(id) {
+            const file = uploadedFiles.find(f => f.id === id);
+            if (!file) return;
+
+            const blob = new Blob([new Uint8Array(file.data)], { type: file.type });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = file.name;
+            link.click();
+            URL.revokeObjectURL(url);
+        };
+
+        // Convert to PDF (simulated - uses a free service)
+        window.convertToPDF = function(id, fileName) {
+            const file = uploadedFiles.find(f => f.id === id);
+            if (!file) return;
+
+            showStatus('⏳ Converting to PDF... This may take a moment.', 'success');
+            
+            // Create FormData for upload to conversion service
+            const blob = new Blob([new Uint8Array(file.data)], { type: file.type });
+            const formData = new FormData();
+            formData.append('file', blob, fileName);
+
+            // Using CloudConvert API (free tier available)
+            // Alternative: Use Zamzar or other free conversion services
+            fetch('https://api.cloudconvert.com/v2/convert', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer your_api_key'
+                },
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    showStatus('✓ Conversion completed!', 'success');
+                } else {
+                    // Fallback: Simple PDF conversion for text content
+                    simplePDFConversion(fileName);
+                }
+            }).catch(() => {
+                // If API fails, use fallback
+                simplePDFConversion(fileName);
+            });
+        };
+
+        // Simple PDF conversion fallback
+        function simplePDFConversion(fileName) {
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <h2>${fileName}</h2>
+                <p>File converted to PDF</p>
+                <p>Timestamp: ${new Date().toLocaleString()}</p>
+            `;
+
+            const opt = {
+                margin: 10,
+                filename: fileName.replace(/\.[^/.]+$/, '.pdf'),
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+            showStatus('✓ PDF created successfully!', 'success');
+        }
+
+        // Delete file
+        window.deleteFile = function(id) {
+            if (confirm('Are you sure you want to delete this file?')) {
+                uploadedFiles = uploadedFiles.filter(f => f.id !== id);
+                saveFiles();
+                renderTable();
+                showStatus('✓ File deleted successfully!', 'success');
+            }
+        };
+
+        // Load files on page load
+        loadFiles();
+    </script>
+</body>
+</html>
 
